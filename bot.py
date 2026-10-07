@@ -59,7 +59,7 @@ async def ai_chat_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
     try:
-        # മോഡൽ gemini-3.6-flash അല്ലെങ്കിൽ gemini-3.7-flash ഉപയോഗിക്കുക
+        # മോഡൽ gemini-2.0-flash അല്ലെങ്കിൽ gemini-1.5-flash ഉപയോഗിക്കുക
         response = ai_client.models.generate_content(
             model='gemini-3.7-flash',
             contents=user_text,
