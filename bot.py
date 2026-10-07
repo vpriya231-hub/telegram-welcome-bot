@@ -3,6 +3,7 @@ import os
 import threading
 from flask import Flask
 from google import genai
+from google.genai import types  # <--- ഇത് ചേർക്കുക
 from telegram import Update
 from telegram.ext import Application, MessageHandler, filters, ContextTypes
 
@@ -58,13 +59,19 @@ async def ai_chat_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
     try:
+        # മോഡൽ gemini-3.6-flash അല്ലെങ്കിൽ gemini-3.7-flash ഉപയോഗിക്കുക
         response = ai_client.models.generate_content(
-            model='gemini-2.5-flash',
+            model='gemini-3.7-flash',
             contents=user_text,
-            config={'system_instruction': system_instruction}
+            config=types.GenerateContentConfig(
+                system_instruction=system_instruction
+            )
         )
         
-        await update.message.reply_text(response.text)
+        if response.text:
+            await update.message.reply_text(response.text)
+        else:
+            await update.message.reply_text("എനിക്ക് മറുപടി നൽകാൻ കഴിഞ്ഞില്ല, ദയവായി വീണ്ടും ശ്രമിക്കൂ.")
         
     except Exception as e:
         logging.error(f"Error generating AI response: {e}")
@@ -80,7 +87,7 @@ def main():
         MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, welcome_new_member)
     )
     
-    # ⚠️ ഇവിടെ 'filters.ChatType.PRIVATE' ഉപയോഗിച്ചത് കൊണ്ട് ബോട്ടിന്റെ direct inbox/chat-ൽ അയക്കുന്ന മെസ്സേജുകൾക്ക് മാത്രം മറുപടി നൽകും!
+    # ബോട്ടിന്റെ direct inbox/chat-ൽ അയക്കുന്ന മെസ്സേജുകൾക്ക് മാത്രം AI മറുപടി
     app.add_handler(
         MessageHandler(filters.TEXT & ~filters.COMMAND & filters.ChatType.PRIVATE, ai_chat_handler)
     )
