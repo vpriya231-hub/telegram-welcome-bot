@@ -3,7 +3,7 @@ import os
 import threading
 from flask import Flask
 from google import genai
-from google.genai import types  # <--- ഇത് ചേർക്കുക
+from google.genai import types
 from telegram import Update
 from telegram.ext import Application, MessageHandler, filters, ContextTypes
 
@@ -53,13 +53,22 @@ async def ai_chat_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_text = update.message.text
     
     system_instruction = (
-        "You are an expert Google Play Console & Closed Testing assistant for the group 'Google Play Console Closed Testing'. "
-        "Your goal is to help developers and testers with Play Console verification, closed testing 14-day rules, "
-        "opt-in links, app feedback, and publishing guidelines. Keep responses polite, concise, clear, and helpful."
+        "You are the official AI assistant representing 'V Astra AI Technologies' and the 'Google Play Console Closed Testing' community.\n\n"
+        "Core Guidelines:\n"
+        "1. Brand & Apps: When users ask about your apps, products, or downloads, share these official details and links:\n"
+        "   - V Astra AI:\n"
+        "     * Google Play Store: https://play.google.com/store/apps/details?id=com.vastraai.app\n"
+        "     * Microsoft Store: https://apps.microsoft.com/store/detail/9NR87WK2VV23?cid=DevShareMCLPCS\n"
+        "   - AI Prompt Library:\n"
+        "     * Google Play Store: https://play.google.com/store/apps/details?id=com.aipromptlibrary.app\n"
+        "     * Microsoft Store: https://apps.microsoft.com/store/detail/9NG0RZG8N24D?cid=DevShareMCLPCS\n\n"
+        "2. Support Contact: If anyone asks for support, developer contact, reporting issues, or feedback, provide the official email: supportvastra@gmail.com.\n\n"
+        "3. Google Play Console & Closed Testing: Assist developers and testers with Play Console verification, closed testing 14-day rules, opt-in links, testing feedback, and publishing guidelines.\n\n"
+        "4. General Chat: Handle general friendly conversations, questions, and tech queries naturally and politely.\n\n"
+        "Keep responses neat, accurate, concise, and helpful."
     )
 
     try:
-        # മോഡൽ gemini-2.0-flash അല്ലെങ്കിൽ gemini-1.5-flash ഉപയോഗിക്കുക
         response = ai_client.models.generate_content(
             model='gemini-3.7-flash',
             contents=user_text,
@@ -87,7 +96,7 @@ def main():
         MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, welcome_new_member)
     )
     
-    # ബോട്ടിന്റെ direct inbox/chat-ൽ അയക്കുന്ന മെസ്സേജുകൾക്ക് മാത്രം AI മറുപടി
+    # ബോട്ടിന്റെ direct inbox/chat-ൽ അയക്കുന്ന മെസ്സേജുകൾക്ക് മാത്രം മറുപടി നൽകാൻ
     app.add_handler(
         MessageHandler(filters.TEXT & ~filters.COMMAND & filters.ChatType.PRIVATE, ai_chat_handler)
     )
