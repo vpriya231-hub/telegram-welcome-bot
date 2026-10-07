@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import os
 import threading
@@ -20,7 +21,7 @@ GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
 # Gemini Client
 ai_client = genai.Client(api_key=GEMINI_API_KEY)
 
-# Render Dummy Server
+# Render Dummy Server to keep instance active
 app_flask = Flask(__name__)
 
 @app_flask.route('/')
@@ -31,7 +32,7 @@ def run_flask():
     port = int(os.environ.get("PORT", 8080))
     app_flask.run(host='0.0.0.0', port=port)
 
-# 1. ഗ്രൂപ്പിൽ പുതിയ ആൾ വരുമ്പോൾ മാത്രം വെൽക്കം ചെയ്യാൻ
+# 1. Welcome handler for new group members
 async def welcome_new_member(update: Update, context: ContextTypes.DEFAULT_TYPE):
     for new_user in update.message.new_chat_members:
         if new_user.id == context.bot.id:
@@ -48,10 +49,13 @@ async def welcome_new_member(update: Update, context: ContextTypes.DEFAULT_TYPE)
 
         await update.message.reply_text(text=welcome_text, parse_mode="HTML")
 
-# 2. ബോട്ടിന്റെ ഇൻബോക്സിൽ (Private Chat) പോയി ചോദിച്ചാൽ മാത്രം AI മറുപടി നൽകാൻ
+# 2. AI chat handler for direct private messages
 async def ai_chat_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     user_text = update.message.text
     
+    # Send typing action to Telegram chat
+    await context.bot.send_chat_action(chat_id=update.effective_chat.id, action="typing")
+
     system_instruction = (
         "You are the official AI assistant representing 'V Astra AI Technologies' and the 'Google Play Console Closed Testing' community.\n\n"
         "Core Guidelines:\n"
@@ -69,7 +73,9 @@ async def ai_chat_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
     )
 
     try:
-        response = ai_client.models.generate_content(
+        # Run blocking generate_content call asynchronously to avoid freezing the event loop
+        response = await asyncio.to_thread(
+            ai_client.models.generate_content,
             model='gemini-3.7-flash',
             contents=user_text,
             config=types.GenerateContentConfig(
@@ -80,7 +86,7 @@ async def ai_chat_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
         if response.text:
             await update.message.reply_text(response.text)
         else:
-            await update.message.reply_text("എനിക്ക് മറുപടി നൽകാൻ കഴിഞ്ഞില്ല, ദയവായി വീണ്ടും ശ്രമിക്കൂ.")
+            await update.message.reply_text("I could not generate a response. Please try again.")
         
     except Exception as e:
         logging.error(f"Error generating AI response: {e}")
@@ -91,12 +97,12 @@ def main():
 
     app = Application.builder().token(BOT_TOKEN).build()
 
-    # ഗ്രൂപ്പിൽ പുതിയ ആൾക്കാരെ വെൽക്കം ചെയ്യാൻ ഉള്ള ഹാൻഡ്‌ലർ
+    # Handler to welcome new users joining the group
     app.add_handler(
         MessageHandler(filters.StatusUpdate.NEW_CHAT_MEMBERS, welcome_new_member)
     )
     
-    # ബോട്ടിന്റെ direct inbox/chat-ൽ അയക്കുന്ന മെസ്സേജുകൾക്ക് മാത്രം മറുപടി നൽകാൻ
+    # Handler for private direct chat messages only
     app.add_handler(
         MessageHandler(filters.TEXT & ~filters.COMMAND & filters.ChatType.PRIVATE, ai_chat_handler)
     )
